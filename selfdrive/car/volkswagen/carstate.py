@@ -167,7 +167,7 @@ class CarState():
     self.displayMetricUnits = not pt_cp.vl["Einheiten_01"]["KBI_MFA_v_Einheit_02"]
 
     # Update ACC radar status.
-    accStatus = pt_cp.vl["ACC_06"]['ACC_Status_ACC']
+    accStatus = cam_cp.vl["ACC_06"]['ACC_Status_ACC']
     if accStatus == 1:
       # ACC okay but disabled
       self.accFault = False
@@ -191,7 +191,7 @@ class CarState():
 
     # Update ACC setpoint. When the setpoint is zero or there's an error, the
     # radar sends a set-speed of ~90.69 m/s / 203mph.
-    self.accSetSpeed = pt_cp.vl["ACC_02"]['SetSpeed']
+    self.accSetSpeed = cam_cp.vl["ACC_02"]['SetSpeed']
     if self.accSetSpeed > 90: self.accSetSpeed = 0
 
     # Update control button states for turn signals and ACC controls.
