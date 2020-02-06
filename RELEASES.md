@@ -1,5 +1,6 @@
-Version 0.7.2 (2020-02-07)
+Version 0.7.2 + VW 1.1 (2020-02-06)
 ========================
+ * (VW Community) New fingerprint messages for 2019 Jetta
  * ECU firmware version based fingerprinting for Honda & Toyota
  * New driving model: improved path prediction during turns and lane changes and better lead speed tracking
  * Improve driver monitoring under extreme lighting and add low accuracy alert
@@ -16,8 +17,11 @@ Version 0.7.1 (2020-01-20)
  * More robust updater thanks to jyoung8607! Requires NEOS update
  * Improve low speed ACC tuning
 
-Version 0.7 (2019-12-13)
+Version 0.7 + VW 1.1 (2020-01-01)
 ========================
+ * (VW Community) Enabled Comma's unofficial Lane Change Assist feature!
+ * (VW Community) Advanced Virtual Relay Technology!
+ * (VW Community) Closer alignment with Comma recommended safety parameters
  * Move to SCons build system!
  * Add Lane Departure Warning (LDW) for all supported vehicles!
  * NEOS update: increase wifi speed thanks to jyoung8607!
