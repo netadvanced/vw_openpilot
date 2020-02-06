@@ -20,7 +20,7 @@ const AddrBus VOLKSWAGEN_TX_MSGS[] = {{MSG_HCA_01, 0}, {MSG_GRA_ACC_01, 0}, {MSG
 // TODO: do checksum and counter checks
 AddrCheckStruct volkswagen_rx_checks[] = {
   {.addr = {MSG_EPS_01}, .bus = 0, .expected_timestep = 10000U},
-  {.addr = {MSG_ACC_06}, .bus = 0, .expected_timestep = 20000U},
+  {.addr = {MSG_ACC_06}, .bus = 2, .expected_timestep = 20000U},
   {.addr = {MSG_MOTOR_20}, .bus = 0, .expected_timestep = 20000U},
 };
 
