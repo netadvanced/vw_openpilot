@@ -119,7 +119,7 @@ class CarState():
                          C=[1., 0.],
                          K=[[0.12287673], [0.29666309]])
 
-  def update(self, pt_cp):
+  def update(self, pt_cp, cam_cp):
     # Update vehicle speed and acceleration from ABS wheel speeds.
     self.wheelSpeedFL = pt_cp.vl["ESP_19"]['ESP_VL_Radgeschw_02'] * CV.KPH_TO_MS
     self.wheelSpeedFR = pt_cp.vl["ESP_19"]['ESP_VR_Radgeschw_02'] * CV.KPH_TO_MS
