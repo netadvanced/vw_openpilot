@@ -6,7 +6,7 @@
 #define MSG_GRA_ACC_01          0x12B
 #define MSG_LDW_02              0x397
 
-const int VOLKSWAGEN_MAX_STEER = 300;               // 2.5 Nm (EPS side max of 3.0Nm with fault if violated)
+const int VOLKSWAGEN_MAX_STEER = 300;               // 3.0 Nm (EPS side max of 3.0Nm with fault if violated)
 const int VOLKSWAGEN_MAX_RT_DELTA = 75;             // 4 max rate up * 50Hz send rate * 250000 RT interval / 1000000 = 50 ; 50 * 1.5 for safety pad = 75
 const uint32_t VOLKSWAGEN_RT_INTERVAL = 250000;     // 250ms between real time checks
 const int VOLKSWAGEN_MAX_RATE_UP = 4;               // 2.0 Nm/s available rate of change from the steering rack (EPS side delta-limit of 5.0 Nm/s)
@@ -34,24 +34,12 @@ int volkswagen_gas_prev = 0;
 uint8_t volkswagen_crc8_lut_8h2f[256]; // Static lookup table for CRC8 poly 0x2F, aka 8H2F/AUTOSAR
 
 
-void gen_crc_lookup_table(uint8_t poly, uint8_t crc_lut[]) {
-  uint8_t crc;
-  int i, j;
-
-   for (i = 0; i < 256; i++) {
-    crc = i;
-    for (j = 0; j < 8; j++) {
-      if ((crc & 0x80) != 0)
-        crc = (uint8_t)((crc << 1) ^ poly);
-      else
-        crc <<= 1;
-    }
-    crc_lut[i] = crc;
-  }
-}
-
 static uint8_t volkswagen_get_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   return (uint8_t)GET_BYTE(to_push, 0);
+}
+
+static uint8_t volkswagen_get_counter(CAN_FIFOMailBox_TypeDef *to_push) {
+  return (uint8_t)GET_BYTE(to_push, 1) & 0xFU;
 }
 
 static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
@@ -66,7 +54,7 @@ static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   }
 
   // CRC the final padding byte, which depends on the address and (sometimes) counter
-  uint8_t counter = GET_BYTE(to_push, 1) & 0xFU;
+  uint8_t counter = volkswagen_get_counter(to_push);
   switch(addr) {
     case 0x9F:  // EPS_01
       crc ^= (uint8_t[]){0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5}[counter];
@@ -74,16 +62,12 @@ static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
     case 0x122: // ACC_06
       crc ^= (uint8_t[]){0x37,0x7D,0xF3,0xA9,0x18,0x46,0x6D,0x4D,0x3D,0x71,0x92,0x9C,0xE5,0x32,0x10,0xB9}[counter];
       break;
-    default: // Undefined CAN message, CRC check expected to fail
+    default:    // Undefined CAN message, CRC check expected to fail
       break;
   }
   crc = volkswagen_crc8_lut_8h2f[crc];
 
   return crc ^ 0xFFU; // Return after standard final XOR for CRC8 8H2F/AUTOSAR
-}
-
-static uint8_t volkswagen_get_counter(CAN_FIFOMailBox_TypeDef *to_push) {
-  return (uint8_t)GET_BYTE(to_push, 1) & 0xFU;
 }
 
 static void volkswagen_init(int16_t param) {
