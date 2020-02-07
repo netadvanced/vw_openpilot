@@ -19,9 +19,9 @@ const AddrBus VOLKSWAGEN_TX_MSGS[] = {{MSG_HCA_01, 0}, {MSG_GRA_ACC_01, 0}, {MSG
 
 // TODO: MOTOR_20 appears to have a CRC and counter, but not yet defined in the DBC or "broken" for OP
 AddrCheckStruct volkswagen_rx_checks[] = {
-  {.addr = {MSG_EPS_01}, .bus = 0, .check_checksum = true, .max_counter = 3U, .expected_timestep = 10000U},
-  {.addr = {MSG_ACC_06}, .bus = 2, .check_checksum = true, .max_counter = 3U, .expected_timestep = 20000U},
-  {.addr = {MSG_MOTOR_20}, .bus = 0, .check_checksum = false, .max_counter = 3U, .expected_timestep = 20000U},
+  {.addr = {MSG_EPS_01}, .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 10000U},
+  {.addr = {MSG_ACC_06}, .bus = 2, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U},
+  {.addr = {MSG_MOTOR_20}, .bus = 0, .check_checksum = false, .max_counter = 15U, .expected_timestep = 20000U},
 };
 
 const int VOLKSWAGEN_RX_CHECK_LEN = sizeof(volkswagen_rx_checks) / sizeof(volkswagen_rx_checks[0]);
@@ -66,7 +66,7 @@ static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   }
 
   // CRC the final padding byte, which depends on the address and (sometimes) counter
-  uint8_t counter = GET_BYTE(to_push, 1) & 0x0F;
+  uint8_t counter = GET_BYTE(to_push, 1) & 0xFU;
   switch(addr) {
     case 0x9F:  // EPS_01
       crc ^= (uint8_t[]){0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5}[counter];
