@@ -17,11 +17,11 @@ const int VOLKSWAGEN_DRIVER_TORQUE_FACTOR = 3;
 // MSG_GRA_ACC_01 is allowed on bus 0 and 2 to keep compatibility with gateway and camera integration
 const AddrBus VOLKSWAGEN_TX_MSGS[] = {{MSG_HCA_01, 0}, {MSG_GRA_ACC_01, 0}, {MSG_GRA_ACC_01, 2}, {MSG_LDW_02, 0}};
 
-// TODO: do checksum and counter checks
+// TODO: MOTOR_20 appears to have a CRC and counter, but not yet defined in the DBC or "broken" for OP
 AddrCheckStruct volkswagen_rx_checks[] = {
-  {.addr = {MSG_EPS_01}, .bus = 0, .expected_timestep = 10000U},
-  {.addr = {MSG_ACC_06}, .bus = 2, .expected_timestep = 20000U},
-  {.addr = {MSG_MOTOR_20}, .bus = 0, .expected_timestep = 20000U},
+  {.addr = {MSG_EPS_01}, .bus = 0, .check_checksum = true, .max_counter = 3U, .expected_timestep = 10000U},
+  {.addr = {MSG_ACC_06}, .bus = 2, .check_checksum = true, .max_counter = 3U, .expected_timestep = 20000U},
+  {.addr = {MSG_MOTOR_20}, .bus = 0, .check_checksum = false, .max_counter = 3U, .expected_timestep = 20000U},
 };
 
 const int VOLKSWAGEN_RX_CHECK_LEN = sizeof(volkswagen_rx_checks) / sizeof(volkswagen_rx_checks[0]);
@@ -31,11 +31,75 @@ int volkswagen_rt_torque_last = 0;
 int volkswagen_desired_torque_last = 0;
 uint32_t volkswagen_ts_last = 0;
 int volkswagen_gas_prev = 0;
+uint8_t crc8_lut_8h2f[256]; // Static lookup table for CRC8 poly 0x2F, aka 8H2F/AUTOSAR
+
+
+void gen_crc_lookup_table(uint8_t poly, uint8_t crc_lut[]) {
+  uint8_t crc;
+  int i, j;
+
+   for (i = 0; i < 256; i++) {
+    crc = i;
+    for (j = 0; j < 8; j++) {
+      if ((crc & 0x80) != 0)
+        crc = (uint8_t)((crc << 1) ^ poly);
+      else
+        crc <<= 1;
+    }
+    crc_lut[i] = crc;
+  }
+}
+
+static uint8_t volkswagen_get_crc(CAN_FIFOMailBox_TypeDef *to_push) {
+  return (uint8_t)GET_BYTE(to_push, 0);
+}
+
+static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
+  int addr = GET_ADDR(to_push);
+  int len = GET_LEN(to_push);
+
+  // CRC the init value and payload first
+  uint8_t crc = 0xFFU;
+  for (int i = 1; i < len; i++) {
+    crc ^= dat[i];
+    crc = crc8_lut_8h2f[crc];
+  }
+
+  // CRC the final padding byte, which depends on the address and (sometimes) counter
+  uint8_t counter = GET_BYTE(to_push, 1) & 0x0F;
+  switch(address) {
+    case 0x9F:  // EPS_01
+      crc ^= (uint8_t[]){0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5}[counter];
+      break;
+    case 0x122: // ACC_06
+      crc ^= (uint8_t[]){0x37,0x7D,0xF3,0xA9,0x18,0x46,0x6D,0x4D,0x3D,0x71,0x92,0x9C,0xE5,0x32,0x10,0xB9}[counter];
+      break;
+    case default: // Undefined CAN message, CRC check expected to fail
+      break;
+  }
+  crc = crc8_lut_8h2f[crc];
+
+  return crc ^ 0xFFU; // Return after standard final XOR for CRC8 8H2F/AUTOSAR
+}
+
+static uint8_t volkswagen_get_counter(CAN_FIFOMailBox_TypeDef *to_push) {
+  return (uint8_t)GET_BYTE(to_push, 1) & 0xFU;
+}
+
+static void volkswagen_init(int16_t param) {
+  UNUSED(param);
+
+  controls_allowed = false;
+  relay_malfunction = false;
+  gen_crc_lookup_table(0x2F, crc8_lut_8h2f);  // CRC-8 8H2F/AUTOSAR for Volkswagen
+
+  return;
+}
 
 static int volkswagen_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
   bool valid = addr_safety_check(to_push, volkswagen_rx_checks, VOLKSWAGEN_RX_CHECK_LEN,
-                                 NULL, NULL, NULL);
+                                 volkswagen_get_crc, volkswagen_compute_crc, volkswagen_get_counter);
 
   if (valid) {
    int bus = GET_BUS(to_push);
@@ -185,7 +249,7 @@ static int volkswagen_fwd_hook(int bus_num, CAN_FIFOMailBox_TypeDef *to_fwd) {
 }
 
 const safety_hooks volkswagen_hooks = {
-  .init = nooutput_init,
+  .init = volkswagen_init,
   .rx = volkswagen_rx_hook,
   .tx = volkswagen_tx_hook,
   .tx_lin = nooutput_tx_lin_hook,
