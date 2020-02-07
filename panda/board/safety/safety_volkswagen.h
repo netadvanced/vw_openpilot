@@ -61,13 +61,13 @@ static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   // CRC the init value and payload first
   uint8_t crc = 0xFFU;
   for (int i = 1; i < len; i++) {
-    crc ^= dat[i];
+    crc ^= (uint8_t)GET_BYTE(to_push, i);
     crc = crc8_lut_8h2f[crc];
   }
 
   // CRC the final padding byte, which depends on the address and (sometimes) counter
   uint8_t counter = GET_BYTE(to_push, 1) & 0x0F;
-  switch(address) {
+  switch(addr) {
     case 0x9F:  // EPS_01
       crc ^= (uint8_t[]){0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5}[counter];
       break;
