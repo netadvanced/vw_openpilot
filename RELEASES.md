@@ -1,5 +1,6 @@
 Version 0.7.2 + VW 1.2 (2020-02-07)
 ========================
+ * (VW Community) KNOWN ISSUE: Set/Resume buttons will not reset EON DM timer
  * (VW Community) Updated MQB tuning parameters for less ping-pong and better banked road handling
  * (VW Community) Updated CC button handling for 2019 vehicles with overloaded Set/Resume semantics
  * (VW Community) First steps toward improving auto-resume from stop, more to come
