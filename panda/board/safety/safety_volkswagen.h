@@ -74,7 +74,7 @@ static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
     case 0x122: // ACC_06
       crc ^= (uint8_t[]){0x37,0x7D,0xF3,0xA9,0x18,0x46,0x6D,0x4D,0x3D,0x71,0x92,0x9C,0xE5,0x32,0x10,0xB9}[counter];
       break;
-    case default: // Undefined CAN message, CRC check expected to fail
+    default: // Undefined CAN message, CRC check expected to fail
       break;
   }
   crc = crc8_lut_8h2f[crc];
