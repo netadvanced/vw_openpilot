@@ -46,6 +46,7 @@ def create_mqb_acc_buttons_control(packer, bus, buttonStatesToSend, CS, idx):
     "GRA_Typ_Hauptschalter": CS.graTypHauptschalter,
     "GRA_Codierung": 2,
     "GRA_Tip_Stufe_2": CS.graTipStufe2,
+    "GRA_Typ468": CS.graTyp468,
     "GRA_ButtonTypeInfo": CS.graButtonTypeInfo
   }
 
