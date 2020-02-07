@@ -62,7 +62,7 @@ static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   uint8_t crc = 0xFFU;
   for (int i = 1; i < len; i++) {
     crc ^= (uint8_t)GET_BYTE(to_push, i);
-    crc = crc8_lut_8h2f[crc];
+    crc = volkswagen_crc8_lut_8h2f[crc];
   }
 
   // CRC the final padding byte, which depends on the address and (sometimes) counter
@@ -77,7 +77,7 @@ static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
     default: // Undefined CAN message, CRC check expected to fail
       break;
   }
-  crc = crc8_lut_8h2f[crc];
+  crc = volkswagen_crc8_lut_8h2f[crc];
 
   return crc ^ 0xFFU; // Return after standard final XOR for CRC8 8H2F/AUTOSAR
 }
