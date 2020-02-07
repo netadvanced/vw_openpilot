@@ -1,6 +1,8 @@
-Version 0.7.2 + VW 1.1 (2020-02-06)
+Version 0.7.2 + VW 1.2 (2020-02-06)
 ========================
- * (VW Community) New fingerprint messages for 2019 Jetta
+ * (VW Community) Updated MQB tuning parameters for less ping-pong
+ * (VW Community) New fingerprint messages in support of the 2019 Jetta
+ * (VW Community) Additional Panda safety CRC and counter validation
  * ECU firmware version based fingerprinting for Honda & Toyota
  * New driving model: improved path prediction during turns and lane changes and better lead speed tracking
  * Improve driver monitoring under extreme lighting and add low accuracy alert
