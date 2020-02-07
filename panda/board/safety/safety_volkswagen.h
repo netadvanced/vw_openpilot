@@ -17,7 +17,6 @@ const int VOLKSWAGEN_DRIVER_TORQUE_FACTOR = 3;
 // MSG_GRA_ACC_01 is allowed on bus 0 and 2 to keep compatibility with gateway and camera integration
 const AddrBus VOLKSWAGEN_TX_MSGS[] = {{MSG_HCA_01, 0}, {MSG_GRA_ACC_01, 0}, {MSG_GRA_ACC_01, 2}, {MSG_LDW_02, 0}};
 
-// TODO: MOTOR_20 appears to have a CRC and counter, but not yet defined in the DBC or "broken" for OP
 AddrCheckStruct volkswagen_rx_checks[] = {
   {.addr = {MSG_EPS_01}, .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 10000U},
   {.addr = {MSG_ACC_06}, .bus = 2, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U},
