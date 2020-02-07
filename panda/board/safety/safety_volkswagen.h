@@ -31,7 +31,7 @@ int volkswagen_rt_torque_last = 0;
 int volkswagen_desired_torque_last = 0;
 uint32_t volkswagen_ts_last = 0;
 int volkswagen_gas_prev = 0;
-uint8_t crc8_lut_8h2f[256]; // Static lookup table for CRC8 poly 0x2F, aka 8H2F/AUTOSAR
+uint8_t volkswagen_crc8_lut_8h2f[256]; // Static lookup table for CRC8 poly 0x2F, aka 8H2F/AUTOSAR
 
 
 void gen_crc_lookup_table(uint8_t poly, uint8_t crc_lut[]) {
@@ -91,7 +91,7 @@ static void volkswagen_init(int16_t param) {
 
   controls_allowed = false;
   relay_malfunction = false;
-  gen_crc_lookup_table(0x2F, crc8_lut_8h2f);  // CRC-8 8H2F/AUTOSAR for Volkswagen
+  gen_crc_lookup_table(0x2F, volkswagen_crc8_lut_8h2f);  // CRC-8 8H2F/AUTOSAR for Volkswagen
 
   return;
 }
