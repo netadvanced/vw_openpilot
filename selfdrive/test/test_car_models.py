@@ -400,7 +400,7 @@ routes = {
     'enableDsu': False,
   },
   "76b83eb0245de90e|2019-10-20--15-42-29": {
-    'carFingerprint': VOLKSWAGEN.GOLF,
+    'carFingerprint': VOLKSWAGEN.GENERICMQB,
     'enableCamera': True,
   },
   "791340bc01ed993d|2019-03-10--16-28-08": {
