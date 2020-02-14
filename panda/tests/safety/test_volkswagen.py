@@ -25,10 +25,14 @@ def sign(a):
   else:
     return -1
 
-volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0xFF, rev=False, xorOut=0xFF)
+# Python crcmod works differently from every other CRC calculator in the planet in some subtle
+# way. The implied leading 1 on the polynomial isn't a big deal, but for some reason, we need
+# to feed it initCrc 0x00 instead of 0xFF like it should be.
+volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0x00, rev=False, xorOut=0xFF)
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
   # Extra shitty testing code: assume length is 8 and message counter is zero for now
+  debug = True
   if addr == 0x9F:
     magic_pad = b'\xF5'
   elif addr == 0x120:
@@ -37,11 +41,13 @@ def volkswagen_mqb_crc(msg, addr, len_msg):
     magic_pad = b'\xE9'
   elif addr == 0x126:
     magic_pad = b'\xDA'
+    debug = False
   else:
     magic_pad = b'\x00'
   msg_to_crc = msg.RDLR.to_bytes(4, 'little')[1:] + msg.RDHR.to_bytes(4, 'little') + magic_pad
   crc = volkswagen_crc_8h2f(msg_to_crc)
-  print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_to_crc)) + " CRC: " + hex(crc))
+  if debug:
+    print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_to_crc)) + " CRC: " + hex(crc))
   return crc
 
 class TestVolkswagenSafety(unittest.TestCase):
