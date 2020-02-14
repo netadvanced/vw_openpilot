@@ -37,7 +37,9 @@ def volkswagen_mqb_crc(msg, addr, len_msg):
     magic_pad = b'E9'
   else:
     magic_pad = b'00'
-  msg_to_crc = msg.to_bytes(8, 'little') + b'00' + magic_pad
+  msg_lo = msg.RDLR.to_bytes(4, 'little')  # Still need to chop off first byte
+  msg_hi = msg.RDHR.to_bytes(4, 'little')
+  msg_to_crc = msg_lo + msg_hi + b'00' + magic_pad
   crc = volkswagen_crc_8h2f(msg_to_crc)
   return crc
 
