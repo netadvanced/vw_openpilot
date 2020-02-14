@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import unittest
 import numpy as np
+import crcmod
+import struct
 from panda import Panda
 from panda.tests.safety import libpandasafety_py
 from panda.tests.safety.common import test_relay_malfunction, make_msg, test_manually_enable_controls_allowed, test_spam_can_buses
@@ -23,6 +25,23 @@ def sign(a):
   else:
     return -1
 
+volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0xFF, rev=False, xorOut=0xFF)
+
+def volkswagen_mqb_crc(msg, addr, len_msg):
+  # Shitty testing code here
+  msg_little = struct.unpack("<I", struct.pack(">I", msg))[0]
+  # Extra shitty: assume message counter is zero
+  magic_pad = b'0x00'
+  if addr == 0x9F:
+    magic_pad = b'0xF5'
+  elif addr == 0x120:
+    magic_pad = b'0xC4'
+  elif addr == 0x121:
+    magic_pad = b'0xE9'
+  msg_to_crc = msg_little + b'0x00' + magic_pad
+  crc = volkswagen_crc_8h2f(msg_to_crc)  # Still need to null pad and magic pad
+  return crc
+
 class TestVolkswagenSafety(unittest.TestCase):
   @classmethod
   def setUp(cls):
@@ -40,6 +59,7 @@ class TestVolkswagenSafety(unittest.TestCase):
     to_send[0].RDHR = ((t & 0x1FFF) << 8)
     if torque < 0:
       to_send[0].RDHR |= 0x1 << 23
+    to_send[0].RDLR = to_send[0].RDLR | volkswagen_crc_8h2f(to_send[0], 0x9F, 8)
     return to_send
 
   def _torque_msg(self, torque):
@@ -48,11 +68,13 @@ class TestVolkswagenSafety(unittest.TestCase):
     to_send[0].RDLR = (t & 0xFFF) << 16
     if torque < 0:
       to_send[0].RDLR |= 0x1 << 31
+    to_send[0].RDLR = to_send[0].RDLR | volkswagen_crc_8h2f(to_send[0], 0x126, 8)
     return to_send
 
   def _gas_msg(self, gas):
     to_send = make_msg(0, 0x121)
     to_send[0].RDLR = (gas & 0xFF) << 12
+    to_send[0].RDLR = to_send[0].RDLR | volkswagen_crc_8h2f(to_send[0], 0x121, 8)
     return to_send
 
   def _button_msg(self, bit):
