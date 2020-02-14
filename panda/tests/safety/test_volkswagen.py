@@ -9,7 +9,7 @@ from panda.tests.safety.common import test_relay_malfunction, make_msg, test_man
 
 MAX_RATE_UP = 4
 MAX_RATE_DOWN = 10
-MAX_STEER = 250
+MAX_STEER = 300
 
 MAX_RT_DELTA = 75
 RT_INTERVAL = 250000
