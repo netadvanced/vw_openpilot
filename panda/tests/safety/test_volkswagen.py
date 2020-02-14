@@ -27,18 +27,20 @@ def sign(a):
 volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0xFF, rev=False, xorOut=0xFF)
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
-  # Extra shitty testing code: assume message counter is zero for now
+  # Extra shitty testing code: assume length is 8 and message counter is zero for now
   if addr == 0x9F:
-    magic_pad = b'F5'
+    magic_pad = b'\xF5'
   elif addr == 0x120:
-    magic_pad = b'C4'
+    magic_pad = b'\xC4'
   elif addr == 0x121:
-    magic_pad = b'E9'
+    magic_pad = b'\xE9'
+  elif addr == 0x126:
+    magic_pad = b'\xDA'
   else:
-    magic_pad = b'00'
-  msg_lo = msg.RDLR.to_bytes(4, 'little')
-  msg_hi = msg.RDHR.to_bytes(4, 'little')
-  return volkswagen_crc_8h2f(msg_lo[1:] + msg_hi + b'00' + magic_pad)
+    magic_pad = b'\x00'
+  msg_to_crc = msg.RDLR.to_bytes(4, 'little')[1:] + msg.RDHR.to_bytes(4, 'little') + magic_pad
+  crc = volkswagen_crc_8h2f(msg_to_crc)
+  return crc
 
 class TestVolkswagenSafety(unittest.TestCase):
   @classmethod
