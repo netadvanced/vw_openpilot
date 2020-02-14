@@ -32,7 +32,7 @@ volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0x00, rev=False, xorOut=0xF
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
   # Extra shitty testing code: assume length is 8 and message counter is zero for now
-  msg_reversed = ((msg.RDHR << 32).to_bytes(4, 'big') + msg.RDLR.to_bytes(4, 'big'))
+  msg_reversed = msg.RDLR.to_bytes(4, 'big') + msg.RDHR.to_bytes(4, 'big')
   debug = True
   if addr == 0x9F:
     magic_pad = b'\xF5'
