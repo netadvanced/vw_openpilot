@@ -32,16 +32,17 @@ volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0x00, rev=False, xorOut=0xF
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
   # Extra shitty testing code: assume length is 8 and message counter is zero for now
-  msg_reversed = msg.RDLR.to_bytes(4, 'big') + msg.RDHR.to_bytes(4, 'big')
+  msg_reversed = msg.RDLR.to_bytes(4, 'little') + msg.RDHR.to_bytes(4, 'little')
+  counter = (msg.RDLR & 0xF00) >> 8
   debug = True
   if addr == 0x9F:
-    magic_pad = b'\xF5'
+    magic_pad = b'\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5'[counter]
   elif addr == 0x120:
-    magic_pad = b'\xC4'
+    magic_pad = b'\xC4\xE2\x4F\xE4\xF8\x2F\x56\x81\x9F\xE5\x83\x44\x05\x3F\x97\xDF'[counter]
   elif addr == 0x121:
-    magic_pad = b'\xE9'
+    magic_pad = b'\xE9\x65\xAE\x6B\x7B\x35\xE5\x5F\x4E\xC7\x86\xA2\xBB\xDD\xEB\xB4'[counter]
   elif addr == 0x126:
-    magic_pad = b'\xDA'
+    magic_pad = b'\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA\xDA'[counter]
     debug = False
   else:
     magic_pad = b'\x00'
@@ -90,7 +91,7 @@ class TestVolkswagenSafety(unittest.TestCase):
   def _gas_msg(self, gas):
     to_send = make_msg(0, 0x121)
     to_send[0].RDLR = (gas & 0xFF) << 12
-    to_send[0].RDLR |= (self.cnt_motor_20 % 16 ) << 8
+    to_send[0].RDLR |= (self.cnt_motor_20 % 16) << 8
     to_send[0].RDLR |= volkswagen_mqb_crc(to_send[0], 0x121, 8)
     self.cnt_motor_20 += 1
     return to_send
