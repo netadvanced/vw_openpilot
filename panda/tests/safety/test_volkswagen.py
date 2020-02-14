@@ -25,6 +25,16 @@ def sign(a):
   else:
     return -1
 
+def reverse_bytes(x):
+  return ((x & 0xff00000000000000) >> 56) | \
+         ((x & 0x00ff000000000000) >> 40) | \
+         ((x & 0x0000ff0000000000) >> 24) | \
+         ((x & 0x000000ff00000000) >> 8) | \
+         ((x & 0x00000000ff000000) << 8) | \
+         ((x & 0x0000000000ff0000) << 24) | \
+         ((x & 0x000000000000ff00) << 40) | \
+         ((x & 0x00000000000000ff) << 56)
+
 # Python crcmod works differently from every other CRC calculator in the planet in some subtle
 # way. The implied leading 1 on the polynomial isn't a big deal, but for some reason, we need
 # to feed it initCrc 0x00 instead of 0xFF like it should be.
@@ -32,6 +42,7 @@ volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0x00, rev=False, xorOut=0xF
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
   # Extra shitty testing code: assume length is 8 and message counter is zero for now
+  msg_reversed = reverse_bytes(msg.RDHR.to_bytes(4, 'big') + msg.RDLR.to_bytes(4, 'big')[:3])
   debug = True
   if addr == 0x9F:
     magic_pad = b'\xF5'
@@ -44,10 +55,9 @@ def volkswagen_mqb_crc(msg, addr, len_msg):
     debug = False
   else:
     magic_pad = b'\x00'
-  msg_to_crc = msg.RDLR.to_bytes(4, 'little')[1:] + msg.RDHR.to_bytes(4, 'little') + magic_pad
-  crc = volkswagen_crc_8h2f(msg_to_crc)
+  crc = volkswagen_crc_8h2f(msg_reversed + magic_pad)
   if debug:
-    print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_to_crc)) + " CRC: " + hex(crc))
+    print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_reversed + magic_pad)) + " CRC: " + hex(crc))
   return crc
 
 class TestVolkswagenSafety(unittest.TestCase):
@@ -106,7 +116,7 @@ class TestVolkswagenSafety(unittest.TestCase):
 
   def test_enable_control_allowed_from_cruise(self):
     to_push = make_msg(0, 0x120)
-    to_push[0].RDLR = 0x03000000
+    to_push[0].RDLR = 0x30000000
     to_push[0].RDLR = to_push[0].RDLR | volkswagen_mqb_crc(to_push[0], 0x120, 8)
     self.safety.safety_rx_hook(to_push)
     self.assertTrue(self.safety.get_controls_allowed())
