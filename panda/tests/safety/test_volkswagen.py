@@ -27,7 +27,7 @@ class TestVolkswagenSafety(unittest.TestCase):
   @classmethod
   def setUp(cls):
     cls.safety = libpandasafety_py.libpandasafety
-    cls.safety.set_safety_hooks(Panda.SAFETY_VOLKSWAGEN, 0)
+    cls.safety.set_safety_hooks(Panda.SAFETY_VOLKSWAGEN_MQB, 0)
     cls.safety.init_tests_volkswagen()
 
   def _set_prev_torque(self, t):
@@ -75,13 +75,13 @@ class TestVolkswagenSafety(unittest.TestCase):
     self.assertFalse(self.safety.get_controls_allowed())
 
   def test_enable_control_allowed_from_cruise(self):
-    to_push = make_msg(0, 0x122)
-    to_push[0].RDHR = 0x30000000
+    to_push = make_msg(0, 0x120)
+    to_push[0].RDLR = 0x00000300
     self.safety.safety_rx_hook(to_push)
     self.assertTrue(self.safety.get_controls_allowed())
 
   def test_disable_control_allowed_from_cruise(self):
-    to_push = make_msg(0, 0x122)
+    to_push = make_msg(0, 0x120)
     self.safety.set_controls_allowed(1)
     self.safety.safety_rx_hook(to_push)
     self.assertFalse(self.safety.get_controls_allowed())
