@@ -2,6 +2,7 @@
 import unittest
 import numpy as np
 import crcmod
+import binascii
 from panda import Panda
 from panda.tests.safety import libpandasafety_py
 from panda.tests.safety.common import test_relay_malfunction, make_msg, test_manually_enable_controls_allowed, test_spam_can_buses
@@ -105,7 +106,7 @@ class TestVolkswagenSafety(unittest.TestCase):
 
   def test_enable_control_allowed_from_cruise(self):
     to_push = make_msg(0, 0x120)
-    to_push[0].RDLR = 0x03000000
+    to_push[0].RDLR = 0x30000000
     to_push[0].RDLR = to_push[0].RDLR | volkswagen_mqb_crc(to_push[0], 0x120, 8)
     self.safety.safety_rx_hook(to_push)
     self.assertTrue(self.safety.get_controls_allowed())
