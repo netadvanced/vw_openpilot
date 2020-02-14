@@ -1,31 +1,32 @@
-// Safety-relevant CAN messages for the Volkswagen MQB platform.
-#define MSG_EPS_01              0x09F
-#define MSG_MOTOR_20            0x121
-#define MSG_ACC_06              0x122
-#define MSG_HCA_01              0x126
-#define MSG_GRA_ACC_01          0x12B
-#define MSG_LDW_02              0x397
-
+// Safety-relevant steering constants for Volkswagen
 const int VOLKSWAGEN_MAX_STEER = 300;               // 3.0 Nm (EPS side max of 3.0Nm with fault if violated)
 const int VOLKSWAGEN_MAX_RT_DELTA = 75;             // 4 max rate up * 50Hz send rate * 250000 RT interval / 1000000 = 50 ; 50 * 1.5 for safety pad = 75
 const uint32_t VOLKSWAGEN_RT_INTERVAL = 250000;     // 250ms between real time checks
-const int VOLKSWAGEN_MAX_RATE_UP = 4;               // 2.0 Nm/s available rate of change from the steering rack (EPS side delta-limit of 5.0 Nm/s)
-const int VOLKSWAGEN_MAX_RATE_DOWN = 10;            // 5.0 Nm/s available rate of change from the steering rack (EPS side delta-limit of 5.0 Nm/s)
+const int VOLKSWAGEN_MAX_RATE_UP = 4;               // 2.0 Nm/s RoC limit (EPS rack has own soft-limit of 5.0 Nm/s)
+const int VOLKSWAGEN_MAX_RATE_DOWN = 10;            // 5.0 Nm/s RoC limit (EPS rack has own soft-limit of 5.0 Nm/s)
 const int VOLKSWAGEN_DRIVER_TORQUE_ALLOWANCE = 80;
 const int VOLKSWAGEN_DRIVER_TORQUE_FACTOR = 3;
 
-// MSG_GRA_ACC_01 is allowed on bus 0 and 2 to keep compatibility with gateway and camera integration
+// Safety-relevant CAN messages for the Volkswagen MQB platform
+#define MSG_EPS_01              0x09F   // RX from EPS rack, driver steering torque
+#define MSG_TSK_06              0x120   // RX from ECU, ACC status from drivetrain coordinator
+#define MSG_MOTOR_20            0x121   // RX from ECU, driver throttle input
+#define MSG_HCA_01              0x126   // TX by OP, Heading Control Assist steering torque
+#define MSG_GRA_ACC_01          0x12B   // TX by OP, ACC control buttons for cancel/resume
+#define MSG_LDW_02              0x397   // TX by OP, Lane line recognition and text alerts
+
+// Transmit of GRA_ACC_01 is allowed on bus 0 and 2 to keep compatibility with gateway and camera integration
 const AddrBus VOLKSWAGEN_TX_MSGS[] = {{MSG_HCA_01, 0}, {MSG_GRA_ACC_01, 0}, {MSG_GRA_ACC_01, 2}, {MSG_LDW_02, 0}};
 
 AddrCheckStruct volkswagen_rx_checks[] = {
-  {.addr = {MSG_EPS_01}, .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 10000U},
-  {.addr = {MSG_ACC_06}, .bus = 2, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U},
+  {.addr = {MSG_EPS_01},   .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 10000U},
+  {.addr = {MSG_TSK_06},   .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U},
   {.addr = {MSG_MOTOR_20}, .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U},
 };
 
 const int VOLKSWAGEN_RX_CHECK_LEN = sizeof(volkswagen_rx_checks) / sizeof(volkswagen_rx_checks[0]);
 
-struct sample_t volkswagen_torque_driver;  // last few driver torques measured
+struct sample_t volkswagen_torque_driver; // Last few driver torques measured
 int volkswagen_rt_torque_last = 0;
 int volkswagen_desired_torque_last = 0;
 uint32_t volkswagen_ts_last = 0;
@@ -33,43 +34,44 @@ int volkswagen_gas_prev = 0;
 uint8_t volkswagen_crc8_lut_8h2f[256]; // Static lookup table for CRC8 poly 0x2F, aka 8H2F/AUTOSAR
 
 
-static uint8_t volkswagen_get_crc(CAN_FIFOMailBox_TypeDef *to_push) {
+static uint8_t volkswagen_mqb_get_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   return (uint8_t)GET_BYTE(to_push, 0);
 }
 
-static uint8_t volkswagen_get_counter(CAN_FIFOMailBox_TypeDef *to_push) {
+static uint8_t volkswagen_mqb_get_counter(CAN_FIFOMailBox_TypeDef *to_push) {
   return (uint8_t)GET_BYTE(to_push, 1) & 0xFU;
 }
 
-static uint8_t volkswagen_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
+static uint8_t volkswagen_mqb_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   int addr = GET_ADDR(to_push);
   int len = GET_LEN(to_push);
 
-  // CRC the init value and payload first
+  // This is CRC-8H2F/AUTOSAR with a twist. See the OpenDBC implementation
+  // of this algorithm for a version with more in-depth comments.
+
   uint8_t crc = 0xFFU;
   for (int i = 1; i < len; i++) {
     crc ^= (uint8_t)GET_BYTE(to_push, i);
     crc = volkswagen_crc8_lut_8h2f[crc];
   }
 
-  // CRC the final padding byte, which depends on the address and (sometimes) counter
   uint8_t counter = volkswagen_get_counter(to_push);
   switch(addr) {
     case MSG_EPS_01:
       crc ^= (uint8_t[]){0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5,0xF5}[counter];
       break;
+    case MSG_TSK_06:
+      crc ^= (uint8_t[]){0xC4,0xE2,0x4F,0xE4,0xF8,0x2F,0x56,0x81,0x9F,0xE5,0x83,0x44,0x05,0x3F,0x97,0xDF}[counter];
+      break;
     case MSG_MOTOR_20:
       crc ^= (uint8_t[]){0xE9,0x65,0xAE,0x6B,0x7B,0x35,0xE5,0x5F,0x4E,0xC7,0x86,0xA2,0xBB,0xDD,0xEB,0xB4}[counter];
       break;
-    case MSG_ACC_06:
-      crc ^= (uint8_t[]){0x37,0x7D,0xF3,0xA9,0x18,0x46,0x6D,0x4D,0x3D,0x71,0x92,0x9C,0xE5,0x32,0x10,0xB9}[counter];
-      break;
-    default:    // Undefined CAN message, CRC check expected to fail
+    default: // Undefined CAN message, CRC check expected to fail
       break;
   }
   crc = volkswagen_crc8_lut_8h2f[crc];
 
-  return crc ^ 0xFFU; // Return after standard final XOR for CRC8 8H2F/AUTOSAR
+  return crc ^ 0xFFU;
 }
 
 static void volkswagen_init(int16_t param) {
@@ -85,7 +87,7 @@ static void volkswagen_init(int16_t param) {
 static int volkswagen_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
   bool valid = addr_safety_check(to_push, volkswagen_rx_checks, VOLKSWAGEN_RX_CHECK_LEN,
-                                 volkswagen_get_crc, volkswagen_compute_crc, volkswagen_get_counter);
+                                 volkswagen_mqb_get_crc, volkswagen_mqb_compute_crc, volkswagen_mqb_get_counter);
 
   if (valid) {
    int bus = GET_BUS(to_push);
@@ -103,15 +105,13 @@ static int volkswagen_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
      update_sample(&volkswagen_torque_driver, torque_driver_new);
    }
 
-   // Monitor ACC_06.ACC_Status_ACC for stock ACC status. Because the current MQB port is lateral-only, OP's control
-   // allowed state is directly driven by stock ACC engagement. Permit the ACC message to come from either bus, in
-   // order to accommodate future camera-side integrations if needed.
-   if (addr == MSG_ACC_06) {
-     int acc_status = (GET_BYTE(to_push, 7) & 0x70) >> 4;
+   // Monitor drivetrain coordinator for stock ACC status.
+   if (addr == MSG_TSK_06) {
+     int acc_status = (GET_BYTE(to_push, 3) & 0x7);
      controls_allowed = ((acc_status == 3) || (acc_status == 4) || (acc_status == 5)) ? 1 : 0;
    }
 
-   // exit controls on rising edge of gas press. Bits [12-20)
+   // Exit controls on rising edge of gas press, bits [12-20]
    if (addr == MSG_MOTOR_20) {
      int gas = (GET_BYTES_04(to_push) >> 12) & 0xFF;
      if ((gas > 0) && (volkswagen_gas_prev == 0)) {
@@ -120,6 +120,7 @@ static int volkswagen_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
      volkswagen_gas_prev = gas;
    }
 
+   // If there are HCA messages on bus 0 not sent by OP, there's a problem.
    if ((safety_mode_cnt > RELAY_TRNS_TIMEOUT) && (bus == 0) && (addr == MSG_HCA_01)) {
      relay_malfunction = true;
    }
@@ -208,25 +209,23 @@ static int volkswagen_fwd_hook(int bus_num, CAN_FIFOMailBox_TypeDef *to_fwd) {
   int addr = GET_ADDR(to_fwd);
   int bus_fwd = -1;
 
-  // NOTE: Will need refactoring for other bus layouts, such as no-forwarding at camera or J533 running-gear CAN
-
   if (!relay_malfunction) {
     switch (bus_num) {
       case 0:
-        // Forward all traffic from J533 gateway to Extended CAN devices.
+        // Forward all traffic from the Extended CAN onward
         bus_fwd = 2;
         break;
       case 2:
         if ((addr == MSG_HCA_01) || (addr == MSG_LDW_02)) {
-          // OP takes control of the Heading Control Assist and Lane Departure Warning messages from the camera.
+          // OP takes control of the Heading Control Assist and Lane Departure Warning messages from the camera
           bus_fwd = -1;
         } else {
-          // Forward all remaining traffic from Extended CAN devices to J533 gateway.
+          // Forward all remaining traffic from Extended CAN devices to J533 gateway
           bus_fwd = 0;
         }
         break;
       default:
-        // No other buses should be in use; fallback to do-not-forward.
+        // No other buses should be in use; fallback to do-not-forward
         bus_fwd = -1;
         break;
     }
