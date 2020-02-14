@@ -2,7 +2,6 @@
 import unittest
 import numpy as np
 import crcmod
-import binascii
 from panda import Panda
 from panda.tests.safety import libpandasafety_py
 from panda.tests.safety.common import test_relay_malfunction, make_msg, test_manually_enable_controls_allowed, test_spam_can_buses
@@ -31,10 +30,9 @@ def sign(a):
 volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0x00, rev=False, xorOut=0xFF)
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
-  # Extra shitty testing code: assume length is 8 and message counter is zero for now
+  # TODO: Needs cleanup
   msg_reversed = msg.RDLR.to_bytes(4, 'little') + msg.RDHR.to_bytes(4, 'little')
   counter = (msg.RDLR & 0xF00) >> 8
-  debug = True
   if addr == 0x9F:
     magic_pad = b'\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5\xF5'[counter]
   elif addr == 0x120:
@@ -46,11 +44,7 @@ def volkswagen_mqb_crc(msg, addr, len_msg):
     debug = False
   else:
     magic_pad = b'\x00'
-  magic_pad = magic_pad.to_bytes(1, 'little')
-  crc = volkswagen_crc_8h2f(msg_reversed[1:] + magic_pad)
-  if debug:
-    print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_reversed[1:] + magic_pad)) + " CRC: " + hex(crc))
-  return crc
+  return volkswagen_crc_8h2f(msg_reversed[1:] + magic_pad.to_bytes(1, 'little'))
 
 class TestVolkswagenSafety(unittest.TestCase):
   @classmethod
