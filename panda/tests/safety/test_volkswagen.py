@@ -56,6 +56,10 @@ class TestVolkswagenSafety(unittest.TestCase):
     cls.safety = libpandasafety_py.libpandasafety
     cls.safety.set_safety_hooks(Panda.SAFETY_VOLKSWAGEN_MQB, 0)
     cls.safety.init_tests_volkswagen()
+    cls.cnt_eps_01 = 0
+    cls.cnt_hca_01 = 0
+    cls.cnt_motor_20 = 0
+    cls.cnt_tsk_06 = 0
 
   def _set_prev_torque(self, t):
     self.safety.set_volkswagen_desired_torque_last(t)
@@ -67,7 +71,9 @@ class TestVolkswagenSafety(unittest.TestCase):
     to_send[0].RDHR = ((t & 0x1FFF) << 8)
     if torque < 0:
       to_send[0].RDHR |= 0x1 << 23
-    to_send[0].RDLR = to_send[0].RDLR | volkswagen_mqb_crc(to_send[0], 0x9F, 8)
+    to_send[0].RDLR |= (self.cnt_eps_01 % 16) << 8
+    to_send[0].RDLR |= volkswagen_mqb_crc(to_send[0], 0x9F, 8)
+    self.cnt_eps_01 += 1
     return to_send
 
   def _torque_msg(self, torque):
@@ -76,13 +82,17 @@ class TestVolkswagenSafety(unittest.TestCase):
     to_send[0].RDLR = (t & 0xFFF) << 16
     if torque < 0:
       to_send[0].RDLR |= 0x1 << 31
-    to_send[0].RDLR = to_send[0].RDLR | volkswagen_mqb_crc(to_send[0], 0x126, 8)
+    to_send[0].RDLR |= (self.cnt_hca_01 % 16) << 8
+    to_send[0].RDLR |= volkswagen_mqb_crc(to_send[0], 0x126, 8)
+    self.cnt_hca_01 += 1
     return to_send
 
   def _gas_msg(self, gas):
     to_send = make_msg(0, 0x121)
     to_send[0].RDLR = (gas & 0xFF) << 12
-    to_send[0].RDLR = to_send[0].RDLR | volkswagen_mqb_crc(to_send[0], 0x121, 8)
+    to_send[0].RDLR |= (self.cnt_motor_20 % 16 ) << 8
+    to_send[0].RDLR |= volkswagen_mqb_crc(to_send[0], 0x121, 8)
+    self.cnt_motor_20 += 1
     return to_send
 
   def _button_msg(self, bit):
@@ -107,7 +117,9 @@ class TestVolkswagenSafety(unittest.TestCase):
   def test_enable_control_allowed_from_cruise(self):
     to_push = make_msg(0, 0x120)
     to_push[0].RDLR = 0x3 << 24
-    to_push[0].RDLR = to_push[0].RDLR | volkswagen_mqb_crc(to_push[0], 0x120, 8)
+    to_push[0].RDLR |= (self.cnt_tsk_06 % 16) << 8
+    to_push[0].RDLR |= volkswagen_mqb_crc(to_push[0], 0x120, 8)
+    self.cnt_tsk_06 += 1
     self.safety.safety_rx_hook(to_push)
     self.assertTrue(self.safety.get_controls_allowed())
 
