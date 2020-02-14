@@ -1,4 +1,5 @@
 // Safety-relevant steering constants for Volkswagen
+// Used as-is for MQB vehicles, linear scaled for PQ vehicles due to different scaling on the bus
 const int VOLKSWAGEN_MAX_STEER = 300;               // 3.0 Nm (EPS side max of 3.0Nm with fault if violated)
 const int VOLKSWAGEN_MAX_RT_DELTA = 75;             // 4 max rate up * 50Hz send rate * 250000 RT interval / 1000000 = 50 ; 50 * 1.5 for safety pad = 75
 const uint32_t VOLKSWAGEN_RT_INTERVAL = 250000;     // 250ms between real time checks
@@ -16,15 +17,15 @@ const int VOLKSWAGEN_DRIVER_TORQUE_FACTOR = 3;
 #define MSG_LDW_02              0x397   // TX by OP, Lane line recognition and text alerts
 
 // Transmit of GRA_ACC_01 is allowed on bus 0 and 2 to keep compatibility with gateway and camera integration
-const AddrBus VOLKSWAGEN_TX_MSGS[] = {{MSG_HCA_01, 0}, {MSG_GRA_ACC_01, 0}, {MSG_GRA_ACC_01, 2}, {MSG_LDW_02, 0}};
+const AddrBus VOLKSWAGEN_MQB_TX_MSGS[] = {{MSG_HCA_01, 0}, {MSG_GRA_ACC_01, 0}, {MSG_GRA_ACC_01, 2}, {MSG_LDW_02, 0}};
+const int VOLKSWAGEN_MQB_TX_MSGS_LEN = sizeof(VOLKSWAGEN_MQB_TX_MSGS)/sizeof(VOLKSWAGEN_MQB_TX_MSGS[0]);
 
-AddrCheckStruct volkswagen_rx_checks[] = {
+AddrCheckStruct volkswagen_mqb_rx_checks[] = {
   {.addr = {MSG_EPS_01},   .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 10000U},
   {.addr = {MSG_TSK_06},   .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U},
   {.addr = {MSG_MOTOR_20}, .bus = 0, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U},
 };
-
-const int VOLKSWAGEN_RX_CHECK_LEN = sizeof(volkswagen_rx_checks) / sizeof(volkswagen_rx_checks[0]);
+const int VOLKSWAGEN_MQB_RX_CHECK_LEN = sizeof(volkswagen_mqb_rx_checks) / sizeof(volkswagen_mqb_rx_checks[0]);
 
 struct sample_t volkswagen_torque_driver; // Last few driver torques measured
 int volkswagen_rt_torque_last = 0;
@@ -47,7 +48,7 @@ static uint8_t volkswagen_mqb_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   int len = GET_LEN(to_push);
 
   // This is CRC-8H2F/AUTOSAR with a twist. See the OpenDBC implementation
-  // of this algorithm for a version with more in-depth comments.
+  // of this algorithm for a version with explanatory comments.
 
   uint8_t crc = 0xFFU;
   for (int i = 1; i < len; i++) {
@@ -74,7 +75,7 @@ static uint8_t volkswagen_mqb_compute_crc(CAN_FIFOMailBox_TypeDef *to_push) {
   return crc ^ 0xFFU;
 }
 
-static void volkswagen_init(int16_t param) {
+static void volkswagen_mqb_init(int16_t param) {
   UNUSED(param);
 
   controls_allowed = false;
@@ -86,7 +87,7 @@ static void volkswagen_init(int16_t param) {
 
 static int volkswagen_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
-  bool valid = addr_safety_check(to_push, volkswagen_rx_checks, VOLKSWAGEN_RX_CHECK_LEN,
+  bool valid = addr_safety_check(to_push, volkswagen_mqb_rx_checks, VOLKSWAGEN_MQB_RX_CHECK_LEN,
                                  volkswagen_mqb_get_crc, volkswagen_mqb_compute_crc, volkswagen_mqb_get_counter);
 
   if (valid) {
@@ -94,7 +95,7 @@ static int volkswagen_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
    int addr = GET_ADDR(to_push);
 
    // Update driver input torque samples from EPS_01.Driver_Strain for absolute torque, and EPS_01.Driver_Strain_VZ
-   // for the direction.
+   // for the direction
    if ((bus == 0) && (addr == MSG_EPS_01)) {
      int torque_driver_new = GET_BYTE(to_push, 5) | ((GET_BYTE(to_push, 6) & 0x1F) << 8);
      int sign = (GET_BYTE(to_push, 6) & 0x80) >> 7;
@@ -105,7 +106,7 @@ static int volkswagen_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
      update_sample(&volkswagen_torque_driver, torque_driver_new);
    }
 
-   // Monitor drivetrain coordinator for stock ACC status.
+   // Monitor TSK_06.TSK_Status for the drivetrain coordinator ACC status
    if (addr == MSG_TSK_06) {
      int acc_status = (GET_BYTE(to_push, 3) & 0x7);
      controls_allowed = ((acc_status == 3) || (acc_status == 4) || (acc_status == 5)) ? 1 : 0;
@@ -120,7 +121,7 @@ static int volkswagen_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
      volkswagen_gas_prev = gas;
    }
 
-   // If there are HCA messages on bus 0 not sent by OP, there's a problem.
+   // If there are HCA messages on bus 0 not sent by OP, there's a relay problem
    if ((safety_mode_cnt > RELAY_TRNS_TIMEOUT) && (bus == 0) && (addr == MSG_HCA_01)) {
      relay_malfunction = true;
    }
@@ -133,11 +134,7 @@ static int volkswagen_tx_hook(CAN_FIFOMailBox_TypeDef *to_send) {
   int bus = GET_BUS(to_send);
   int tx = 1;
 
-  if (!msg_allowed(addr, bus, VOLKSWAGEN_TX_MSGS, sizeof(VOLKSWAGEN_TX_MSGS)/sizeof(VOLKSWAGEN_TX_MSGS[0]))) {
-    tx = 0;
-  }
-
-  if (relay_malfunction) {
+  if (!msg_allowed(addr, bus, VOLKSWAGEN_MQB_TX_MSGS, VOLKSWAGEN_MQB_TX_MSGS_LEN) || relay_malfunction) {
     tx = 0;
   }
 
@@ -233,12 +230,13 @@ static int volkswagen_fwd_hook(int bus_num, CAN_FIFOMailBox_TypeDef *to_fwd) {
   return bus_fwd;
 }
 
-const safety_hooks volkswagen_hooks = {
-  .init = volkswagen_init,
+// Volkswagen MQB platform
+const safety_hooks volkswagen_mqb_hooks = {
+  .init = volkswagen_mqb_init,
   .rx = volkswagen_rx_hook,
   .tx = volkswagen_tx_hook,
   .tx_lin = nooutput_tx_lin_hook,
   .fwd = volkswagen_fwd_hook,
-  .addr_check = volkswagen_rx_checks,
-  .addr_check_len = sizeof(volkswagen_rx_checks) / sizeof(volkswagen_rx_checks[0]),
+  .addr_check = volkswagen_mqb_rx_checks,
+  .addr_check_len = VOLKSWAGEN_MQB_RX_CHECK_LEN,
 };
