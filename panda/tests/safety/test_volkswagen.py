@@ -46,6 +46,7 @@ def volkswagen_mqb_crc(msg, addr, len_msg):
     debug = False
   else:
     magic_pad = b'\x00'
+  magic_pad = magic_pad.to_bytes(1, 'little')
   crc = volkswagen_crc_8h2f(msg_reversed[1:] + magic_pad)
   if debug:
     print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_reversed[1:] + magic_pad)) + " CRC: " + hex(crc))
