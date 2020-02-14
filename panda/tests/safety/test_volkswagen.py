@@ -76,7 +76,7 @@ class TestVolkswagenSafety(unittest.TestCase):
 
   def test_enable_control_allowed_from_cruise(self):
     to_push = make_msg(0, 0x120)
-    to_push[0].RDLR = 0x00000300
+    to_push[0].RDLR = 0x00030000
     self.safety.safety_rx_hook(to_push)
     self.assertTrue(self.safety.get_controls_allowed())
 
