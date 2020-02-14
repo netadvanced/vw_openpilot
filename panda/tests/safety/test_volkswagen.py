@@ -2,7 +2,6 @@
 import unittest
 import numpy as np
 import crcmod
-import binascii
 from panda import Panda
 from panda.tests.safety import libpandasafety_py
 from panda.tests.safety.common import test_relay_malfunction, make_msg, test_manually_enable_controls_allowed, test_spam_can_buses
@@ -25,16 +24,6 @@ def sign(a):
   else:
     return -1
 
-def reverse_bytes(x):
-  return ((x & 0xff00000000000000) >> 56) | \
-         ((x & 0x00ff000000000000) >> 40) | \
-         ((x & 0x0000ff0000000000) >> 24) | \
-         ((x & 0x000000ff00000000) >> 8) | \
-         ((x & 0x00000000ff000000) << 8) | \
-         ((x & 0x0000000000ff0000) << 24) | \
-         ((x & 0x000000000000ff00) << 40) | \
-         ((x & 0x00000000000000ff) << 56)
-
 # Python crcmod works differently from every other CRC calculator in the planet in some subtle
 # way. The implied leading 1 on the polynomial isn't a big deal, but for some reason, we need
 # to feed it initCrc 0x00 instead of 0xFF like it should be.
@@ -42,7 +31,7 @@ volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0x00, rev=False, xorOut=0xF
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
   # Extra shitty testing code: assume length is 8 and message counter is zero for now
-  msg_reversed = reverse_bytes(msg.RDHR.to_bytes(4, 'big') + msg.RDLR.to_bytes(4, 'big')[:3])
+  msg_reversed = ((msg.RDHR << 32) | msg.RDLR).to_bytes(7, 'little')
   debug = True
   if addr == 0x9F:
     magic_pad = b'\xF5'
