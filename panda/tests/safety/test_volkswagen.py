@@ -2,6 +2,7 @@
 import unittest
 import numpy as np
 import crcmod
+import binascii
 from panda import Panda
 from panda.tests.safety import libpandasafety_py
 from panda.tests.safety.common import test_relay_malfunction, make_msg, test_manually_enable_controls_allowed, test_spam_can_buses
@@ -40,6 +41,7 @@ def volkswagen_mqb_crc(msg, addr, len_msg):
     magic_pad = b'\x00'
   msg_to_crc = msg.RDLR.to_bytes(4, 'little')[1:] + msg.RDHR.to_bytes(4, 'little') + magic_pad
   crc = volkswagen_crc_8h2f(msg_to_crc)
+  print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_to_crc)) + " CRC: " + hex(crc))
   return crc
 
 class TestVolkswagenSafety(unittest.TestCase):
