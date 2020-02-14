@@ -28,18 +28,17 @@ def sign(a):
 volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0xFF, rev=False, xorOut=0xFF)
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
-  # Shitty testing code here
-  msg_little = struct.unpack("<I", struct.pack(">I", msg))[0]
-  # Extra shitty: assume message counter is zero
-  magic_pad = b'0x00'
+  # Extra shitty testing code: assume message counter is zero for now
   if addr == 0x9F:
-    magic_pad = b'0xF5'
+    magic_pad = b'F5'
   elif addr == 0x120:
-    magic_pad = b'0xC4'
+    magic_pad = b'C4'
   elif addr == 0x121:
-    magic_pad = b'0xE9'
-  msg_to_crc = msg_little + b'0x00' + magic_pad
-  crc = volkswagen_crc_8h2f(msg_to_crc)  # Still need to null pad and magic pad
+    magic_pad = b'E9'
+  else:
+    magic_pad = b'00'
+  msg_to_crc = msg.to_bytes(8, 'little') + b'00' + magic_pad
+  crc = volkswagen_crc_8h2f(msg_to_crc)
   return crc
 
 class TestVolkswagenSafety(unittest.TestCase):
@@ -59,7 +58,7 @@ class TestVolkswagenSafety(unittest.TestCase):
     to_send[0].RDHR = ((t & 0x1FFF) << 8)
     if torque < 0:
       to_send[0].RDHR |= 0x1 << 23
-    to_send[0].RDLR = to_send[0].RDLR | volkswagen_crc_8h2f(to_send[0], 0x9F, 8)
+    to_send[0].RDLR = to_send[0].RDLR | volkswagen_mqb_crc(to_send[0], 0x9F, 8)
     return to_send
 
   def _torque_msg(self, torque):
@@ -68,13 +67,13 @@ class TestVolkswagenSafety(unittest.TestCase):
     to_send[0].RDLR = (t & 0xFFF) << 16
     if torque < 0:
       to_send[0].RDLR |= 0x1 << 31
-    to_send[0].RDLR = to_send[0].RDLR | volkswagen_crc_8h2f(to_send[0], 0x126, 8)
+    to_send[0].RDLR = to_send[0].RDLR | volkswagen_mqb_crc(to_send[0], 0x126, 8)
     return to_send
 
   def _gas_msg(self, gas):
     to_send = make_msg(0, 0x121)
     to_send[0].RDLR = (gas & 0xFF) << 12
-    to_send[0].RDLR = to_send[0].RDLR | volkswagen_crc_8h2f(to_send[0], 0x121, 8)
+    to_send[0].RDLR = to_send[0].RDLR | volkswagen_mqb_crc(to_send[0], 0x121, 8)
     return to_send
 
   def _button_msg(self, bit):
