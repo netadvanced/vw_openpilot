@@ -32,7 +32,7 @@ volkswagen_crc_8h2f = crcmod.mkCrcFun(0x12F, initCrc=0x00, rev=False, xorOut=0xF
 
 def volkswagen_mqb_crc(msg, addr, len_msg):
   # Extra shitty testing code: assume length is 8 and message counter is zero for now
-  msg_reversed = ((msg.RDHR << 32) | msg.RDLR).to_bytes(8, 'little')[1:]
+  msg_reversed = ((msg.RDHR << 32).to_bytes(4, 'big') + msg.RDLR.to_bytes(4, 'big'))
   debug = True
   if addr == 0x9F:
     magic_pad = b'\xF5'
@@ -45,9 +45,9 @@ def volkswagen_mqb_crc(msg, addr, len_msg):
     debug = False
   else:
     magic_pad = b'\x00'
-  crc = volkswagen_crc_8h2f(msg_reversed + magic_pad)
+  crc = volkswagen_crc_8h2f(msg_reversed[1:] + magic_pad)
   if debug:
-    print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_reversed + magic_pad)) + " CRC: " + hex(crc))
+    print("Addr: " + hex(addr) + " Message: " + str(binascii.hexlify(msg_reversed[1:] + magic_pad)) + " CRC: " + hex(crc))
   return crc
 
 class TestVolkswagenSafety(unittest.TestCase):
@@ -106,7 +106,7 @@ class TestVolkswagenSafety(unittest.TestCase):
 
   def test_enable_control_allowed_from_cruise(self):
     to_push = make_msg(0, 0x120)
-    to_push[0].RDLR = 0x03000000
+    to_push[0].RDLR = 0x03 << 24
     to_push[0].RDLR = to_push[0].RDLR | volkswagen_mqb_crc(to_push[0], 0x120, 8)
     self.safety.safety_rx_hook(to_push)
     self.assertTrue(self.safety.get_controls_allowed())
