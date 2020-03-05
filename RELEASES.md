@@ -1,3 +1,8 @@
+Version 0.7.2 + VW 1.2.1 (2020-03-05)
+========================
+ * (VW Community) Hotfix for "no comms between process" on cars without factory LKAS
+ * (VW Community) Hotfix for occasional steering fault messages after engaging
+
 Version 0.7.2 + VW 1.2 (2020-02-08)
 ========================
  * (VW Community) Updated MQB tuning parameters for less ping-pong and better banked road handling
