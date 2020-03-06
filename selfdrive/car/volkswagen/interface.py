@@ -119,7 +119,7 @@ class CarInterface(CarInterfaceBase):
     self.pt_cp.update_strings(can_strings)
     self.cam_cp.update_strings(can_strings)
     self.CS.update(self.pt_cp, self.cam_cp)
-    ret.canValid = self.pt_cp.can_valid and self.cam_cp.can_valid
+    ret.canValid = self.pt_cp.can_valid
 
     # Wheel and vehicle speed, yaw rate
     ret.wheelSpeeds.fl = self.CS.wheelSpeedFL
