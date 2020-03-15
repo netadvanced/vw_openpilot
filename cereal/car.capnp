@@ -496,9 +496,4 @@ struct CarParams {
     fw @1;
     fixed @2;
   }
-
-  enum FingerprintSource {
-    can @0;
-    fw @1;
-  }
 }

@@ -179,13 +179,6 @@ ALERTS = [
       Priority.LOWER, VisualAlert.none, AudibleAlert.none, 0., 0., 15.),
 
   Alert(
-      "startupMaster",
-      "WARNING: This branch is not tested",
-      "Always keep hands on wheel and eyes on road",
-      AlertStatus.userPrompt, AlertSize.mid,
-      Priority.LOW_LOWEST, VisualAlert.none, AudibleAlert.none, 0., 0., 15.),
-
-  Alert(
       "startupNoControl",
       "Dashcam mode",
       "Always keep hands on wheel and eyes on road",
