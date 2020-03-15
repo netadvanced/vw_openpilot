@@ -98,6 +98,7 @@ class CarState(CarStateBase):
     self.graTypHauptschalter = pt_cp.vl["GRA_ACC_01"]['GRA_Typ_Hauptschalter']
     self.graButtonTypeInfo = pt_cp.vl["GRA_ACC_01"]['GRA_ButtonTypeInfo']
     self.graTipStufe2 = pt_cp.vl["GRA_ACC_01"]['GRA_Tip_Stufe_2']
+    self.graTyp468 = pt_cp.vl["GRA_ACC_01"]['GRA_Typ468']
     # Pick up the GRA_ACC_01 CAN message counter so we can sync to it for
     # later cruise-control button spamming.
     self.graMsgBusCounter = pt_cp.vl["GRA_ACC_01"]['COUNTER']
@@ -160,6 +161,7 @@ class CarState(CarStateBase):
       ("GRA_Verstellung_Zeitluecke", "GRA_ACC_01", 0), # ACC button, time gap adj
       ("GRA_Typ_Hauptschalter", "GRA_ACC_01", 0),   # ACC main button type
       ("GRA_Tip_Stufe_2", "GRA_ACC_01", 0),         # unknown related to stalk type
+      ("GRA_Typ468", "GRA_ACC_01", 0),              # Set/Resume button behavior as overloaded coast/accel??
       ("GRA_ButtonTypeInfo", "GRA_ACC_01", 0),      # unknown related to stalk type
       ("COUNTER", "GRA_ACC_01", 0),                 # GRA_ACC_01 CAN message counter
     ]
