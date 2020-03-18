@@ -60,7 +60,7 @@ class CarInterface(CarInterfaceBase):
       ret.networkLocation = NWL.fwdCamera
     else:
       ret.networkLocation = NWL.gateway
-    cloudlog.warning("Installed network location detected: %r", ret.networkLocation)
+    cloudlog.warning("Detected network location: %r", ret.networkLocation)
 
     # TODO: get actual value, for now starting with reasonable value for
     # civic and scaling by mass and wheelbase
