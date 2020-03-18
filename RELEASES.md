@@ -1,5 +1,8 @@
-Version 0.7.4 (2020-03-20)
+Version 0.7.4 + VW 1.3 (2020-03-18)
 ========================
+ * (VW Community) Now fully in-sync with Comma upstream safety at full torque!
+ * (VW Community) Improved ISO24242 compliance in Panda code
+ * (VW Community) Fix for virtual Panda relay code breaking BP/C2 cars with real relays
  * New driving model: improved lane changes and lead car detection
  * Improved driver monitoring model: improve eye detection
  * Improved calibration stability
