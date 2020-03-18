@@ -1,7 +1,7 @@
 from cereal import car
 from selfdrive.config import Conversions as CV
 from selfdrive.controls.lib.drive_helpers import create_event, EventTypes as ET
-from selfdrive.car.volkswagen.values import CAR, BUTTON_STATES
+from selfdrive.car.volkswagen.values import CAR, BUTTON_STATES, NWL
 from common.params import Params
 from selfdrive.car import STD_CARGO_KG, scale_rot_inertia, scale_tire_stiffness, gen_empty_fingerprint
 from selfdrive.car.interfaces import CarInterfaceBase
@@ -14,6 +14,9 @@ class CarInterface(CarInterfaceBase):
 
     self.displayMetricUnitsPrev = None
     self.buttonStatesPrev = BUTTON_STATES.copy()
+
+    # Set up an alias to PT/CAM parser for ACC depending on its detected network location
+    self.cp_acc = self.cp if CP.networkLocation == NWL.fwdCamera else self.cp_cam
 
   @staticmethod
   def compute_gb(accel, speed):
@@ -52,6 +55,13 @@ class CarInterface(CarInterfaceBase):
     ret.enableCamera = True  # Stock camera detection doesn't apply to VW
     ret.transmissionType = car.CarParams.TransmissionType.automatic
 
+    # Determine installed network location by finding the ACC_06 radar message
+    if 0x122 in fingerprint[0]:
+      ret.networkLocation = NWL.fwdCamera
+    else:
+      ret.networkLocation = NWL.gateway
+    cloudlog.warning("Installed network location detected: %r", ret.networkLocation)
+
     # TODO: get actual value, for now starting with reasonable value for
     # civic and scaling by mass and wheelbase
     ret.rotationalInertia = scale_rot_inertia(ret.mass, ret.wheelbase)
@@ -75,8 +85,8 @@ class CarInterface(CarInterfaceBase):
     self.cp.update_strings(can_strings)
     self.cp_cam.update_strings(can_strings)
 
-    ret = self.CS.update(self.cp)
-    ret.canValid = self.cp.can_valid
+    ret = self.CS.update(self.cp, self.cp_cam, self.cp_acc)
+    ret.canValid = self.cp.can_valid and self.cp_cam.can_valid
     ret.steeringRateLimited = self.CC.steer_rate_limited if self.CC is not None else False
 
     # Update the EON metric configuration to match the car at first startup,

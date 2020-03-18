@@ -1,3 +1,4 @@
+from cereal import car
 from selfdrive.car import dbc_dict
 
 class CarControllerParams:
@@ -21,6 +22,8 @@ class CarControllerParams:
 class CANBUS:
   pt = 0
   cam = 2
+
+NWL = car.CarParams.networkLocation
 
 BUTTON_STATES = {
   "accelCruise": False,

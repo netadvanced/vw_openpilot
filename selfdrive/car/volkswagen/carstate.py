@@ -4,7 +4,7 @@ from selfdrive.config import Conversions as CV
 from selfdrive.car.interfaces import CarStateBase
 from opendbc.can.parser import CANParser
 from opendbc.can.can_define import CANDefine
-from selfdrive.car.volkswagen.values import DBC, CANBUS, BUTTON_STATES, CarControllerParams
+from selfdrive.car.volkswagen.values import DBC, CANBUS, NWL, BUTTON_STATES, CarControllerParams
 
 class CarState(CarStateBase):
   def __init__(self, CP):
@@ -13,7 +13,7 @@ class CarState(CarStateBase):
     self.shifter_values = can_define.dv["Getriebe_11"]['GE_Fahrstufe']
     self.buttonStates = BUTTON_STATES.copy()
 
-  def update(self, pt_cp):
+  def update(self, pt_cp, cam_cp, acc_cp):
     ret = car.CarState.new_message()
     # Update vehicle speed and acceleration from ABS wheel speeds.
     ret.wheelSpeeds.fl = pt_cp.vl["ESP_19"]['ESP_VL_Radgeschw_02'] * CV.KPH_TO_MS
@@ -77,7 +77,7 @@ class CarState(CarStateBase):
 
     # Update ACC setpoint. When the setpoint is zero or there's an error, the
     # radar sends a set-speed of ~90.69 m/s / 203mph.
-    ret.cruiseState.speed = pt_cp.vl["ACC_02"]['SetSpeed']
+    ret.cruiseState.speed = acc_cp.vl["ACC_02"]['SetSpeed']
     if ret.cruiseState.speed > 90:
       ret.cruiseState.speed = 0
 
@@ -185,24 +185,29 @@ class CarState(CarStateBase):
       ("Einheiten_01", 1),  # From J??? not known if gateway, cluster, or BCM
     ]
 
-    return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, CANBUS.pt)
+    if CP.networkLocation == NWL.fwdCamera:
+      # The ACC radar is here on CANBUS.pt
+      signals += [("SetSpeed", "ACC_02", 0)]  # ACC set speed
+      checks += [("ACC_02", 17)]  # From J428 ACC radar control module
 
-  # A single signal is monitored from the camera CAN bus, and then ignored,
-  # so the presence of CAN traffic can be verified with cam_cp.valid.
+    return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, CANBUS.pt)
 
   @staticmethod
   def get_cam_can_parser(CP):
 
     signals = [
       # sig_name, sig_address, default
-      ("SetSpeed", "ACC_02", 0),                    # ACC set speed
       ("Kombi_Lamp_Green", "LDW_02", 0),            # Lane Assist status LED
     ]
 
     checks = [
       # sig_address, frequency
-      ("ACC_02", 17),       # From J428 ACC radar control module
       ("LDW_02", 10),       # From R242 Driver assistance camera
     ]
+
+    if CP.networkLocation == NWL.gateway:
+      # The ACC radar is here on CANBUS.cam
+      signals += [("SetSpeed", "ACC_02", 0)]  # ACC set speed
+      checks += [("ACC_02", 17)]  # From J428 ACC radar control module
 
     return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, CANBUS.cam)
