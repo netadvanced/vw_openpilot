@@ -24,6 +24,7 @@ class CANBUS:
   cam = 2
 
 NWL = car.CarParams.NetworkLocation
+TRANS = car.CarParams.TransmissionType
 
 BUTTON_STATES = {
   "accelCruise": False,

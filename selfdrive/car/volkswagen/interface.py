@@ -2,7 +2,7 @@ from cereal import car
 from selfdrive.swaglog import cloudlog
 from selfdrive.config import Conversions as CV
 from selfdrive.controls.lib.drive_helpers import create_event, EventTypes as ET
-from selfdrive.car.volkswagen.values import CAR, BUTTON_STATES, NWL
+from selfdrive.car.volkswagen.values import CAR, BUTTON_STATES, NWL, TRANS
 from common.params import Params
 from selfdrive.car import STD_CARGO_KG, scale_rot_inertia, scale_tire_stiffness, gen_empty_fingerprint
 from selfdrive.car.interfaces import CarInterfaceBase
@@ -61,7 +61,20 @@ class CarInterface(CarInterfaceBase):
       ret.networkLocation = NWL.fwdCamera
     else:
       ret.networkLocation = NWL.gateway
+
+    # Determine transmission type by CAN message(s) present on the bus
+    if 0xAD in fingerprint[0]:
+      # Getribe_11 message detected: traditional automatic or DSG gearbox
+      ret.transmissionType = TRANS.automatic
+    elif 0x187 in fingerprint[0]:
+      # EV_Gearshift message detected: e-Golf or similar direct-drive electric
+      ret.transmissionType = TRANS.direct
+    else:
+      # No trans message at all, must be a true stick-shift manual
+      ret.transmissionType = TRANS.manual
+
     cloudlog.warning("Detected network location: %r", ret.networkLocation)
+    cloudlog.warning("Detected transmission type: %r", ret.transmissionType)
 
     # TODO: get actual value, for now starting with reasonable value for
     # civic and scaling by mass and wheelbase
@@ -86,7 +99,7 @@ class CarInterface(CarInterfaceBase):
     self.cp.update_strings(can_strings)
     self.cp_cam.update_strings(can_strings)
 
-    ret = self.CS.update(self.cp, self.cp_cam, self.cp_acc)
+    ret = self.CS.update(self.cp, self.cp_cam, self.cp_acc, CP.transmissionType)
     ret.canValid = self.cp.can_valid and self.cp_cam.can_valid
     ret.steeringRateLimited = self.CC.steer_rate_limited if self.CC is not None else False
 
