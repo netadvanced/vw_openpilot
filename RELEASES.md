@@ -1,5 +1,7 @@
 Version 0.7.4 + VW 1.3 (2020-03-18)
 ========================
+ * (VW Community) Network position auto-detect, no more R242 vs J533 branch!
+ * (VW Community) Trans type auto-detect, no more regular vs manual/e-Golf branch!
  * (VW Community) Now fully in-sync with Comma upstream safety at full torque!
  * (VW Community) Improved ISO24242 compliance in Panda code
  * (VW Community) Fix for virtual Panda relay code breaking BP/C2 cars with real relays
