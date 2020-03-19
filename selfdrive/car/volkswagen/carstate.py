@@ -14,7 +14,7 @@ class CarState(CarStateBase):
     if CP.transmissionType == TRANS.automatic:
       self.shifter_values = can_define.dv["Getriebe_11"]['GE_Fahrstufe']
     elif CP.transmissionType == TRANS.direct:
-      self.shifter_values = can_define.dv["Getriebe_11"]['GE_Fahrstufe']
+      self.shifter_values = can_define.dv["EV_Gearshift"]['GearPosition']
     self.buttonStates = BUTTON_STATES.copy()
 
   def update(self, pt_cp, cam_cp, acc_cp, trans_type):
